@@ -4,6 +4,21 @@ import json
 import sys
 import os
 
+INDENT = 4
+curr_indent = 0
+
+def print_line (fd, line):
+    if (line.contains("{")):
+        fd.write(" " * curr_indent)
+        curr_indent += INDENT
+    elif (line.contains("}")):
+        curr_indent -= INDENT
+        fd.write(" " * curr_indent)
+    else:
+        fd.write(" " * curr_indent)
+
+    fd.write(line)
+
 IDL_TO_JSON_EXECUTABLE = './idl_to_json'
 
 try:
@@ -27,6 +42,8 @@ try:
 
     # Parse declarations into a Python dictionary
     decls = json.loads(subprocess.check_output([IDL_TO_JSON_EXECUTABLE, filename]))
+
+    indent = 0
 
     # Set up the libraries and namespaces
     stub.write(f"#include \"{filename}\"\n")
@@ -52,10 +69,72 @@ try:
 
         # print the function signature
         proxy.write(f"{sig['return_type']} {name}({argstring}) {{\n")
-        stub.write(f"{sig['return_type']} __{name}({argstring}) {{\n")
+        stub.write(f"void __{name}() {{\n")
 
+        # fill in function defs in proxy
+        proxy.write(f"    int fNameLen = strlen(\"{name}\");\n")
+        proxy.write("    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n")
+        proxy.write(f"    RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n")
+
+        for i in range(0, len(args)):
+            proxy.write(f"    RPCPROXYSOCKET->write((const char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n")
+        
+        if (sig["return_type"] != "void"):
+            proxy.write(f"    {args[i]['type']} retVal;\n")
+            proxy.write("    RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n")
+
+        proxy.write("    char readBuffer[4];\n")
+        proxy.write("    RPCPROXYSOCKET->read(readBuffer, 4);\n")
+        proxy.write("    if (strncmp(readBuffer, \"DONE\", 4) != 0) { throw C150Exception(\"error\"); }")
+
+        if (sig["return_type"] != "void"):
+            proxy.write("\n\n    return retVal;")
+
+        # fill in function defs in stub
+        stub.write("    char doneBuffer[5] = \"DONE\";\n\n")
+
+        for i in range(0, len(args)):
+            stub.write(f"    {args[i]['type']} {args[i]['name']};\n")
+            stub.write(f"    RPCSTUBSOCKET->read((char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n")
+
+        if (sig["return_type"] != "void"):
+            stub.write(f"    {sig['return_type']} retVal = {name}(")
+        else:
+            stub.write(f"    {name}(")
+
+        for i in range(0, len(args)):
+            stub.write(f"{args[i]['name']}")
+            if (i + 1 != len(args)):
+                stub.write(", ")
+
+        stub.write(");\n\n")
+
+        if (sig["return_type"] != "void"):
+            stub.write("    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n")
+
+        stub.write("    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));")
+        
+        # end function definition
         proxy.write("\n}\n\n")
         stub.write("\n}\n\n")
+
+    stub.write("void dispatchFunction() {\n")
+    stub.write("    int fNameLen;\n")
+    stub.write("    RPCSTUBSOCKET->read((char *) &fNameLen, sizeof(fNameLen));\n\n")
+    stub.write("    char functionNameBuffer[fNameLen + 1];\n\n")
+    stub.write("    RPCSTUBSOCKET->read(functionNameBuffer, fNameLen);\n")
+    stub.write("    functionNameBuffer[fNameLen] = '\\0';\n\n")
+    stub.write("    if (!RPCSTUBSOCKET-> eof()) {\n")
+    
+    for  name, sig in decls["functions"].items():
+        stub.write(f"        if (strcmp(functionNameBuffer, \"{name}\") == 0) {{\n")
+        stub.write(f"            __{name}();\n")
+        stub.write("        } else ")
+
+    stub.write("{\n")
+    stub.write("            throw C150Exception(\"error\");\n")
+    stub.write("        }\n")
+    stub.write("    }\n}\n")
 
 
     # Close the proxy and stub files for the IDL
