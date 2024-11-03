@@ -5,18 +5,42 @@ import sys
 import os
 
 INDENT = 4
-curr_indent = 0
+curr_indent_p = 0
+indent_it_p = True
+curr_indent_s = 0
+indent_it_s = True
 
-def print_line (fd, line):
-    if (line.contains("{")):
-        fd.write(" " * curr_indent)
-        curr_indent += INDENT
-    elif (line.contains("}")):
-        curr_indent -= INDENT
-        fd.write(" " * curr_indent)
+def print_line (fd, line, p_or_s):
+    global curr_indent_p, indent_it_p, curr_indent_s, indent_it_s
+    if ("}" in line) and ("{" in line):
+        if p_or_s:
+            if indent_it_p: fd.write(" " * curr_indent_p)
+        else:
+            if indent_it_s: fd.write(" " * curr_indent_s)
+    elif ("{" in line):
+        if p_or_s:
+            if indent_it_p: fd.write(" " * curr_indent_p)
+            curr_indent_p += INDENT
+        else:
+            if indent_it_s: fd.write(" " * curr_indent_s)
+            curr_indent_s += INDENT
+    elif ("}" in line):
+        if p_or_s:
+            curr_indent_p -= INDENT
+            if indent_it_p: fd.write(" " * curr_indent_p)
+        else:
+            curr_indent_s -= INDENT
+            if indent_it_s: fd.write(" " * curr_indent_s)
     else:
-        fd.write(" " * curr_indent)
+        if p_or_s:
+            if indent_it_p: fd.write(" " * curr_indent_p)
+        else:
+            if indent_it_s: fd.write(" " * curr_indent_s)
 
+    if p_or_s:
+        indent_it_p = "\n" in line
+    else:
+        indent_it_s = "\n" in line
     fd.write(line)
 
 IDL_TO_JSON_EXECUTABLE = './idl_to_json'
@@ -43,20 +67,18 @@ try:
     # Parse declarations into a Python dictionary
     decls = json.loads(subprocess.check_output([IDL_TO_JSON_EXECUTABLE, filename]))
 
-    indent = 0
-
     # Set up the libraries and namespaces
-    stub.write(f"#include \"{filename}\"\n")
-    stub.write("\n#include \"rpcstubhelper.h\"\n")
-    stub.write("\n#include <cstdio>")
-    stub.write("\n#include <cstring>\n")
-    stub.write("\nusing namespace C150NETWORK;\n\n")
+    print_line(stub, f"#include \"{filename}\"\n", False)
+    print_line(stub, "\n#include \"rpcstubhelper.h\"\n", False)
+    print_line(stub, "\n#include <cstdio>", False)
+    print_line(stub, "\n#include <cstring>\n", False)
+    print_line(stub, "\nusing namespace C150NETWORK;\n\n", False)
 
-    proxy.write(f"#include \"{filename}\"\n")
-    proxy.write("\n#include \"rpcproxyhelper.h\"\n")
-    proxy.write("\n#include <cstdio>")
-    proxy.write("\n#include <cstring>\n")
-    proxy.write("\nusing namespace C150NETWORK;\n\n")
+    print_line(proxy, f"#include \"{filename}\"\n", True)
+    print_line(proxy, "\n#include \"rpcproxyhelper.h\"\n", True)
+    print_line(proxy, "\n#include <cstdio>", True)
+    print_line(proxy, "\n#include <cstring>\n", True)
+    print_line(proxy, "\nusing namespace C150NETWORK;\n\n", True)
 
     # Loop printing each function signature
     for  name, sig in decls["functions"].items():
@@ -68,73 +90,73 @@ try:
         argstring = ', '.join([a["type"] + ' ' + a["name"] for a in args])
 
         # print the function signature
-        proxy.write(f"{sig['return_type']} {name}({argstring}) {{\n")
-        stub.write(f"void __{name}() {{\n")
+        print_line(proxy, f"{sig['return_type']} {name}({argstring}) {{\n", True)
+        print_line(stub, f"void __{name}() {{\n", False)
 
         # fill in function defs in proxy
-        proxy.write(f"    int fNameLen = strlen(\"{name}\");\n")
-        proxy.write("    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n")
-        proxy.write(f"    RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n")
+        print_line(proxy, f"int fNameLen = strlen(\"{name}\");\n", True)
+        print_line(proxy, "RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n", True)
+        print_line(proxy, f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n", True)
 
         for i in range(0, len(args)):
-            proxy.write(f"    RPCPROXYSOCKET->write((const char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n")
+            print_line(proxy, f"RPCPROXYSOCKET->write((const char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n", True)
         
         if (sig["return_type"] != "void"):
-            proxy.write(f"    {args[i]['type']} retVal;\n")
-            proxy.write("    RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n")
+            print_line(proxy, f"{args[i]['type']} retVal;\n", True)
+            print_line(proxy, "RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n", True)
 
-        proxy.write("    char readBuffer[4];\n")
-        proxy.write("    RPCPROXYSOCKET->read(readBuffer, 4);\n")
-        proxy.write("    if (strncmp(readBuffer, \"DONE\", 4) != 0) { throw C150Exception(\"error\"); }")
+        print_line(proxy, "char readBuffer[4];\n", True)
+        print_line(proxy, "RPCPROXYSOCKET->read(readBuffer, 4);\n", True)
+        print_line(proxy, "if (strncmp(readBuffer, \"DONE\", 4) != 0) { throw C150Exception(\"error\"); }\n\n", True)
 
         if (sig["return_type"] != "void"):
-            proxy.write("\n\n    return retVal;")
+            print_line(proxy, "return retVal;", True)
 
         # fill in function defs in stub
-        stub.write("    char doneBuffer[5] = \"DONE\";\n\n")
+        print_line(stub, "char doneBuffer[5] = \"DONE\";\n\n", False)
 
         for i in range(0, len(args)):
-            stub.write(f"    {args[i]['type']} {args[i]['name']};\n")
-            stub.write(f"    RPCSTUBSOCKET->read((char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n")
+            print_line(stub, f"{args[i]['type']} {args[i]['name']};\n", False)
+            print_line(stub, f"RPCSTUBSOCKET->read((char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n", False)
 
         if (sig["return_type"] != "void"):
-            stub.write(f"    {sig['return_type']} retVal = {name}(")
+            print_line(stub, f"{sig['return_type']} retVal = {name}(", False)
         else:
-            stub.write(f"    {name}(")
+            print_line(stub, f"{name}(", False)
 
         for i in range(0, len(args)):
-            stub.write(f"{args[i]['name']}")
+            print_line(stub, f"{args[i]['name']}", False)
             if (i + 1 != len(args)):
-                stub.write(", ")
+                print_line(stub, ", ", False)
 
-        stub.write(");\n\n")
+        print_line(stub, ");\n\n", False)
 
         if (sig["return_type"] != "void"):
-            stub.write("    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n")
+            print_line(stub, "RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n", False)
 
-        stub.write("    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));")
+        print_line(stub, "RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));", False)
         
         # end function definition
-        proxy.write("\n}\n\n")
-        stub.write("\n}\n\n")
+        print_line(proxy, "\n}\n\n", True)
+        print_line(stub, "\n}\n\n", False)
 
-    stub.write("void dispatchFunction() {\n")
-    stub.write("    int fNameLen;\n")
-    stub.write("    RPCSTUBSOCKET->read((char *) &fNameLen, sizeof(fNameLen));\n\n")
-    stub.write("    char functionNameBuffer[fNameLen + 1];\n\n")
-    stub.write("    RPCSTUBSOCKET->read(functionNameBuffer, fNameLen);\n")
-    stub.write("    functionNameBuffer[fNameLen] = '\\0';\n\n")
-    stub.write("    if (!RPCSTUBSOCKET-> eof()) {\n")
+    print_line(stub, "void dispatchFunction() {\n", False)
+    print_line(stub, "int fNameLen;\n", False)
+    print_line(stub, "RPCSTUBSOCKET->read((char *) &fNameLen, sizeof(fNameLen));\n\n", False)
+    print_line(stub, "char functionNameBuffer[fNameLen + 1];\n\n", False)
+    print_line(stub, "RPCSTUBSOCKET->read(functionNameBuffer, fNameLen);\n", False)
+    print_line(stub, "functionNameBuffer[fNameLen] = '\\0';\n\n", False)
+    print_line(stub, "if (!RPCSTUBSOCKET-> eof()) {\n", False)
     
     for  name, sig in decls["functions"].items():
-        stub.write(f"        if (strcmp(functionNameBuffer, \"{name}\") == 0) {{\n")
-        stub.write(f"            __{name}();\n")
-        stub.write("        } else ")
+        print_line(stub, f"if (strcmp(functionNameBuffer, \"{name}\") == 0) {{\n", False)
+        print_line(stub, f"__{name}();\n", False)
+        print_line(stub, "} else ", False)
 
-    stub.write("{\n")
-    stub.write("            throw C150Exception(\"error\");\n")
-    stub.write("        }\n")
-    stub.write("    }\n}\n")
+    print_line(stub, "{\n", False)
+    print_line(stub, "throw C150Exception(\"error\");\n", False)
+    print_line(stub, "}\n", False)
+    print_line(stub, "}\n}\n", False)
 
 
     # Close the proxy and stub files for the IDL

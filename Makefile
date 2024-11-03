@@ -235,4 +235,5 @@ idl_to_json: idl_to_json.o $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
 clean:
 	 rm -f pingstreamclient pingstreamserver idldeclarationtst idl_to_json simplefunctionclient simplefunctionserver *.o *.json *.pyc GRADE* *debug.txt arithmeticclient arithmeticserver
 
-
+psclean:
+	 rm -f arithmetic.stub.cpp arithmetic.proxy.cpp simplefunction.stub.cpp simplefunction.proxy.cpp
