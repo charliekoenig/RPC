@@ -23,10 +23,78 @@ def IF (condition, iftrue, iffalse, indentation) -> str:
     
     return ifBase
 
-def ELSE (body, indentation):
+def ELSE (body, indentation) -> str:
     return "{\n" + \
             indent_it(indentation + 1) + body + "\n" + \
             indent_it(indentation) + "}"
+
+def proxy_function (name, sig, types) -> str:
+    return_type = sig["return_type"]
+    args        = sig["arguments"]
+    argstring = ', '.join([a["type"] + ' ' + a["name"] for a in args])
+
+    i = indent_it(1)
+
+    return_str = f"{return_type} {name}({argstring}) {{\n"
+    return_str += i + f"int fNameLen = strlen(\"{name}\");\n"
+    return_str += i + "RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n"
+    return_str += i + f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n"
+
+    for j in range(0, len(args)):
+        if types[args[j]['type']]["type_of_type"] == "builtin":
+            return_str += i + f"RPCPROXYSOCKET->write((const char *) &{args[j]['name']}, sizeof({args[j]['name']}));\n\n"
+        # for data to be serialized, go into else
+
+    if (return_type != "void"):
+        return_str += i + f"{return_type} retVal;\n"
+        return_str += i + "RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n"
+
+    return_str += i + "char readBuffer[4];\n" + i + "RPCPROXYSOCKET->read(readBuffer, 4);\n"
+    
+    return_str += i + IF("strncmp(readBuffer, \"DONE\", 4) != 0", \
+                       "throw C150Exception(\"error\");", \
+                       None, 1)
+
+    if (return_type != "void"):
+        return_str += i + "return retVal;"
+    
+    return_str += "\n}\n\n"
+                
+    return return_str
+    
+
+def stub_function (name, sig, types) -> str:
+    return_type = sig["return_type"]
+    args        = sig["arguments"]
+    argstring = ', '.join([a["name"] for a in args])
+
+    i = indent_it(1)
+
+    return_str = f"void __{name}() {{\n"
+    return_str += i + "char doneBuffer[5] = \"DONE\";\n\n"
+
+    for j in range(0, len(args)):
+        if types[args[j]['type']]["type_of_type"] == "builtin":
+            return_str += i + f"{args[j]['type']} {args[j]['name']};\n"
+            return_str += i + f"RPCSTUBSOCKET->read((char *) &{args[j]['name']}, sizeof({args[j]['name']}));\n\n"
+        # for data to be serialized, go into else
+
+    if (return_type != "void"):
+        return_str += i + f"{return_type} retVal = {name}("
+    else:
+        return_str += i + f"{name}("
+    return_str += argstring + ");\n\n"
+    
+    if (return_type != "void"):
+        if types[return_type]["type_of_type"] == "builtin":
+            return_str += i + "RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n"
+
+    return_str += i + "RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));"
+    
+    return_str += i + "\n}\n\n"
+
+    return return_str
+
 
 def print_line (fd, line, p_or_s):
     global curr_indent_p, indent_it_p, curr_indent_s, indent_it_s
@@ -99,68 +167,10 @@ try:
     print_line(proxy, "\nusing namespace C150NETWORK;\n\n", True)
 
     # Loop printing each function signature
+    types = decls["types"]
     for  name, sig in decls["functions"].items():
-
-        # Python List of all args (each is a dictionary with keys "name" and "type")
-        args = sig["arguments"]
-
-        # Make a string of form:  "type1 arg1, type2 arg2" for use in function sig
-        argstring = ', '.join([a["type"] + ' ' + a["name"] for a in args])
-
-        # print the function signature
-        print_line(proxy, f"{sig['return_type']} {name}({argstring}) {{\n", True)
-        print_line(stub, f"void __{name}() {{\n", False)
-
-        # fill in function defs in proxy
-        print_line(proxy, f"int fNameLen = strlen(\"{name}\");\n", True)
-        print_line(proxy, "RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n", True)
-        print_line(proxy, f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n", True)
-
-        for i in range(0, len(args)):
-            print_line(proxy, f"RPCPROXYSOCKET->write((const char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n", True)
-        
-        if (sig["return_type"] != "void"):
-            print_line(proxy, f"{args[i]['type']} retVal;\n", True)
-            print_line(proxy, "RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n", True)
-
-        print_line(proxy, "char readBuffer[4];\n", True)
-        print_line(proxy, "RPCPROXYSOCKET->read(readBuffer, 4);\n", True)
-
-        proxy.write(indent_it(1))
-        proxy.write(IF("strncmp(readBuffer, \"DONE\", 4) != 0", \
-                       "throw C150Exception(\"error\");", \
-                       None, 1))
-
-        if (sig["return_type"] != "void"):
-            print_line(proxy, "return retVal;", True)
-
-        # fill in function defs in stub
-        print_line(stub, "char doneBuffer[5] = \"DONE\";\n\n", False)
-
-        for i in range(0, len(args)):
-            print_line(stub, f"{args[i]['type']} {args[i]['name']};\n", False)
-            print_line(stub, f"RPCSTUBSOCKET->read((char *) &{args[i]['name']}, sizeof({args[i]['name']}));\n\n", False)
-
-        if (sig["return_type"] != "void"):
-            print_line(stub, f"{sig['return_type']} retVal = {name}(", False)
-        else:
-            print_line(stub, f"{name}(", False)
-
-        for i in range(0, len(args)):
-            print_line(stub, f"{args[i]['name']}", False)
-            if (i + 1 != len(args)):
-                print_line(stub, ", ", False)
-
-        print_line(stub, ");\n\n", False)
-
-        if (sig["return_type"] != "void"):
-            print_line(stub, "RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n", False)
-
-        print_line(stub, "RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));", False)
-        
-        # end function definition
-        print_line(proxy, "\n}\n\n", True)
-        print_line(stub, "\n}\n\n", False)
+        proxy.write(proxy_function(name, sig, types))
+        stub.write(stub_function(name, sig, types))
 
     print_line(stub, "void dispatchFunction() {\n", False)
     print_line(stub, "int fNameLen;\n", False)

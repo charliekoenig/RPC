@@ -12,7 +12,7 @@ void __func1() {
 
     func1();
 
-    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));
+    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void __func2() {
@@ -20,7 +20,7 @@ void __func2() {
 
     func2();
 
-    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));
+    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void __func3() {
@@ -28,7 +28,7 @@ void __func3() {
 
     func3();
 
-    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));
+    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void dispatchFunction() {
