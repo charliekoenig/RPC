@@ -10,24 +10,6 @@ indent_it_p = True
 curr_indent_s = 0
 indent_it_s = True
 
-def indent_it (indentation) -> str:
-    return INDENT * indentation * " "
-
-def IF (condition, iftrue, iffalse, indentation) -> str:
-    ifBase = f"if ({condition}) {{" + "\n" + \
-            indent_it(indentation + 1) +  f"{iftrue}" + "\n" + \
-            indent_it(indentation) + "}"
-
-    if iffalse is not None:
-        ifBase = ifBase + " else " + iffalse
-    
-    return ifBase
-
-def ELSE (body, indentation):
-    return "{\n" + \
-            indent_it(indentation + 1) + body + "\n" + \
-            indent_it(indentation) + "}"
-
 def print_line (fd, line, p_or_s):
     global curr_indent_p, indent_it_p, curr_indent_s, indent_it_s
     if ("}" in line) and ("{" in line):
@@ -125,11 +107,7 @@ try:
 
         print_line(proxy, "char readBuffer[4];\n", True)
         print_line(proxy, "RPCPROXYSOCKET->read(readBuffer, 4);\n", True)
-
-        proxy.write(indent_it(1))
-        proxy.write(IF("strncmp(readBuffer, \"DONE\", 4) != 0", \
-                       "throw C150Exception(\"error\");", \
-                       None, 1))
+        print_line(proxy, "if (strncmp(readBuffer, \"DONE\", 4) != 0) { throw C150Exception(\"error\"); }\n\n", True)
 
         if (sig["return_type"] != "void"):
             print_line(proxy, "return retVal;", True)
@@ -168,18 +146,18 @@ try:
     print_line(stub, "char functionNameBuffer[fNameLen + 1];\n\n", False)
     print_line(stub, "RPCSTUBSOCKET->read(functionNameBuffer, fNameLen);\n", False)
     print_line(stub, "functionNameBuffer[fNameLen] = '\\0';\n\n", False)
+    print_line(stub, "if (!RPCSTUBSOCKET-> eof()) {\n", False)
+    
+    for  name, sig in decls["functions"].items():
+        print_line(stub, f"if (strcmp(functionNameBuffer, \"{name}\") == 0) {{\n", False)
+        print_line(stub, f"__{name}();\n", False)
+        print_line(stub, "} else ", False)
 
-    listFunctionNames = list(decls['functions'].items())
-    dispatchStr = IF(f"strcmp(functionNameBuffer, \"{listFunctionNames[0][0]}\") == 0", f"__{listFunctionNames[0][0]}();", ELSE("throw C150Exception(\"received above function name\\n\");", 2), 2)
-    tempDispatchStr = ""
+    print_line(stub, "{\n", False)
+    print_line(stub, "throw C150Exception(\"error\");\n", False)
+    print_line(stub, "}\n", False)
+    print_line(stub, "}\n}\n", False)
 
-    for  name, sig in listFunctionNames[1:]:
-        tempDispatchStr = IF(f"strcmp(functionNameBuffer, \"{name}\") == 0", f"__{name}();", dispatchStr, 2)
-        dispatchStr = tempDispatchStr
-
-    stub.write(indent_it(1))
-    stub.write(IF("!RPCSTUBSOCKET-> eof()", dispatchStr, None, 1))
-    print_line(stub, "\n}\n", False)
 
     # Close the proxy and stub files for the IDL
     proxy.close()
