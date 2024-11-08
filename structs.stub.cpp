@@ -1,4 +1,4 @@
-#include "simplefunction.idl"
+#include "structs.idl"
 
 #include "rpcstubhelper.h"
 
@@ -7,19 +7,13 @@
 
 using namespace C150NETWORK;
 
-void __func1() {
+void __area() {
     char doneBuffer[5] = "DONE";
 
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
-void __func2() {
-    char doneBuffer[5] = "DONE";
-
-    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
-}
-
-void __func3() {
+void __findPerson() {
     char doneBuffer[5] = "DONE";
 
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
@@ -35,12 +29,10 @@ void dispatchFunction() {
     functionNameBuffer[fNameLen] = '\0';
 
     if (!RPCSTUBSOCKET-> eof()) {
-        if (strcmp(functionNameBuffer, "func3") == 0) {
-            __func3();
-        } else if (strcmp(functionNameBuffer, "func2") == 0) {
-            __func2();
-        } else if (strcmp(functionNameBuffer, "func1") == 0) {
-            __func1();
+        if (strcmp(functionNameBuffer, "findPerson") == 0) {
+            __findPerson();
+        } else if (strcmp(functionNameBuffer, "area") == 0) {
+            __area();
         } else {
             throw C150Exception("received above function name\n");
         }

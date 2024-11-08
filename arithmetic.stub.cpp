@@ -10,60 +10,24 @@ using namespace C150NETWORK;
 void __add() {
     char doneBuffer[5] = "DONE";
 
-    int x;
-    RPCSTUBSOCKET->read((char *) &x, sizeof(x));
-
-    int y;
-    RPCSTUBSOCKET->read((char *) &y, sizeof(y));
-
-    int retVal = add(x, y);
-
-    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void __divide() {
     char doneBuffer[5] = "DONE";
 
-    int x;
-    RPCSTUBSOCKET->read((char *) &x, sizeof(x));
-
-    int y;
-    RPCSTUBSOCKET->read((char *) &y, sizeof(y));
-
-    int retVal = divide(x, y);
-
-    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void __multiply() {
     char doneBuffer[5] = "DONE";
 
-    int x;
-    RPCSTUBSOCKET->read((char *) &x, sizeof(x));
-
-    int y;
-    RPCSTUBSOCKET->read((char *) &y, sizeof(y));
-
-    int retVal = multiply(x, y);
-
-    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
 void __subtract() {
     char doneBuffer[5] = "DONE";
 
-    int x;
-    RPCSTUBSOCKET->read((char *) &x, sizeof(x));
-
-    int y;
-    RPCSTUBSOCKET->read((char *) &y, sizeof(y));
-
-    int retVal = subtract(x, y);
-
-    RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
