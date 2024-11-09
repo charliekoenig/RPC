@@ -4,6 +4,8 @@ import json
 import sys
 import os
 
+# todo: ARRAYS
+
 INDENT = 4
 curr_indent_p = 0
 indent_it_p = True
@@ -28,28 +30,75 @@ def ELSE (body, indentation) -> str:
             indent_it(indentation + 1) + body + "\n" + \
             indent_it(indentation) + "}"
 
-def handle_args (arg_name, arg_type, types, proxy, stub, src):
+def BODY (body, indentation) -> str:
+    i = indent_it(indentation)
+    indented = list(map(lambda line : i + line, body))
+    return "\n".join(indented) + "\n"
+
+def LOOP(type, condition, body, indentation) -> str:
+    i = indent_it(indentation - 1)
+    loop = f"{type} ({condition}) {{ \n{BODY(body, indentation)}" + i + "}"
+
+    return loop
+
+
+        
+
+def deserialize(arg_name, arg_type, types, proxy, stub, body):
+    writetype = f"{arg_type} " if "." not in arg_name else ""
     if arg_type == "string":
-        # print(arg_name + ": handling string")
-        if src is proxy:
-            proxy.write(f"RPCPROXYSOCKET->write({arg_name}.c_str(), {arg_name}.length() + 1);\n\n")
-            # STUB.WRITE(use the function from simplefunction.og.stub that reads a byte at a time)
-        else:
-            print("handling when source is stub")
+        body.append(f"{writetype}{arg_name} = getStringFromStream();")
+
     elif types[arg_type]["type_of_type"] == "builtin": 
-        proxy.write(f"string numStringRep = to_string({arg_name});\n")
-        proxy.write(f"RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);\n\n")
-        # print(arg_name + ": handling int")
+        body.append(f"{writetype}{arg_name} = sto{arg_type[0]}(getStringFromStream());")
+
+    elif types[arg_type]["type_of_type"] == "array":
+        # declare an array of type type
+        count = types[arg_type]["element_count"]
+        array_type = types[arg_type]["member_type"]
+        
+        # WORK ON ARRAY TYPE AND ELEM COUNT TRIMMING STUFF HERE
+        body.append(f"{array_type.split("__")[1].split("[")[0]} {arg_name}[{count}];")
+   
+        # STORE ITERATORS AND VARIABLE NAMES FOR NESTED ARRAYS
+        b = deserialize("v1", array_type, types, proxy, stub, [])
+        b.append(f"{arg_name}[i] = v1;")
+
+        body.append(LOOP("for", f"int i = 0; i < {count}; i++", b, 2))
+        # start forloop based on element count
+            # recurse on member type
+        # end forloop
+
+    elif types[arg_type]["type_of_type"] == "struct":
+        if "." not in arg_name:
+            body.append(f"{writetype}{arg_name};\n")
+
+        for member in types[arg_type]["members"]:
+            deserialize(f"{arg_name}.{member['name']}", member['type'], types, proxy, stub, body)
+
+    return body
+            
+
+def serialize(arg_name, arg_type, types, proxy, stub, body, src):
+    valid_var = arg_name.replace('.', "")
+    if arg_type == "string":
+        body.append(f"RPC{src}SOCKET->write({arg_name}.c_str(), {arg_name}.length() + 1);\n")
+        
+    elif types[arg_type]["type_of_type"] == "builtin": 
+        body.append(f"string {valid_var}StringRep = to_string({arg_name});")
+        body.append(f"RPC{src}SOCKET->write({valid_var}StringRep.c_str(), {valid_var}StringRep.length() + 1);\n")
+        
     elif types[arg_type]["type_of_type"] == "array":
         print(arg_name + ": handling array")
         # start forloop based on element count
             # recurse on member type
         # end forloop
     elif types[arg_type]["type_of_type"] == "struct":
-        print(arg_name + ": handling struct")
         for member in types[arg_type]["members"]:
-            print("    member: " + member['name'])
-            handle_args(f"{arg_name}.{member['name']}", member['type'], types, proxy, stub, src)
+            serialize(f"{arg_name}.{member['name']}", member['type'], types, proxy, stub, body, src)
+
+    return body
+
 
 def proxy_function_setup (name, sig, types) -> str:
     return_type = sig["return_type"]
@@ -59,9 +108,7 @@ def proxy_function_setup (name, sig, types) -> str:
     i = indent_it(1)
 
     return_str = f"{return_type} {name}({argstring}) {{\n"
-    return_str += i + f"int fNameLen = strlen(\"{name}\");\n"
-    return_str += i + "RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));\n"
-    return_str += i + f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\"));\n\n"
+    return_str += i + f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\") + 1);\n\n"
 
     # for j in range(0, len(args)):
     #     if types[args[j]['type']]["type_of_type"] == "builtin":
@@ -139,6 +186,23 @@ def stub_function_wrapup () -> str:
 
     return return_str
 
+def print_read_function(fd, sname):
+    fd.write("string getStringFromStream() {\n")
+    fd.write(BODY(["char bufp = '\\0';\n",
+                   "vector<char> stringRead;\n",
+                   "int readlen = 1;\n",
+                   LOOP("while", "readlen == 1", 
+                        [f"readlen = RPC{sname}SOCKET-> read(&bufp, 1);", 
+                          "stringRead.push_back(bufp);",
+                          IF("bufp == '\\0'", "break;", None, 2)], 2),
+                #    "while (readlen == 1) {\n",
+                #    f"readlen = RPC{sname}SOCKET-> read(&bufp, 1);\n",
+                #    "stringRead.push_back(bufp);\n",
+                #    IF("bufp == '\\0'", "break;", None, 2),
+                #    "\n",
+                #    "}\n",
+                   "return stringRead.data();\n"], 1))
+    fd.write("}\n")
 
 def print_line (fd, line, p_or_s):
     global curr_indent_p, indent_it_p, curr_indent_s, indent_it_s
@@ -202,13 +266,16 @@ try:
     print_line(stub, "\n#include \"rpcstubhelper.h\"\n", False)
     print_line(stub, "\n#include <cstdio>", False)
     print_line(stub, "\n#include <cstring>\n", False)
+    print_line(stub, "#include <vector>\n", False)
     print_line(stub, "\nusing namespace C150NETWORK;\n\n", False)
+    print_line(stub, "string getStringFromStream();\n\n", False)
 
     print_line(proxy, f"#include \"{filename}\"\n", True)
     print_line(proxy, "\n#include \"rpcproxyhelper.h\"\n", True)
     print_line(proxy, "\n#include <cstdio>", True)
     print_line(proxy, "\n#include <cstring>\n", True)
     print_line(proxy, "\nusing namespace C150NETWORK;\n\n", True)
+    print_line(proxy, "string getStringFromStream();\n\n", True)
 
     # Loop printing each function signature
     types = decls["types"]
@@ -217,31 +284,56 @@ try:
         stub.write(stub_function_setup(name, sig, types))
 
         for arg in sig["arguments"]:
-            handle_args(arg["name"], arg["type"], types, proxy, stub, proxy)
+            serialized = serialize(arg["name"], arg["type"], types, proxy, stub, [], "PROXY")
+            deserialized = deserialize(arg["name"], arg["type"], types, proxy, stub, [])
+
+            proxy.write(BODY(serialized, 1))
+            stub.write(BODY(deserialized, 1))
+
+        # handle returns
+        # non void
+        return_type = sig["return_type"]
+        argstring = ', '.join([a["name"] for a in sig["arguments"]])
+
+        stub.write(indent_it(1))
+        if return_type == "void":
+            stub.write(f"{name}({argstring});\n")
+        else: 
+            stub.write(f"{return_type} retVal = {name}({argstring});\n")
+
+            serialized = serialize("retVal", return_type, types, proxy, stub, [], "STUB")
+            deserialized = deserialize("retVal", return_type, types, proxy, stub, [])
+
+            proxy.write(BODY(deserialized, 1))
+            stub.write(BODY(serialized, 1))
+
+        # end of handling returns
 
         proxy.write(proxy_function_wrapup())
         stub.write(stub_function_wrapup())
 
+        if return_type != "void":
+            proxy.write("\n" + indent_it(1) + "return retVal;")
+
         proxy.write("\n}\n\n")
 
     print_line(stub, "void dispatchFunction() {\n", False)
-    print_line(stub, "int fNameLen;\n", False)
-    print_line(stub, "RPCSTUBSOCKET->read((char *) &fNameLen, sizeof(fNameLen));\n\n", False)
-    print_line(stub, "char functionNameBuffer[fNameLen + 1];\n\n", False)
-    print_line(stub, "RPCSTUBSOCKET->read(functionNameBuffer, fNameLen);\n", False)
-    print_line(stub, "functionNameBuffer[fNameLen] = '\\0';\n\n", False)
+    print_line(stub, "string functionName = getStringFromStream();\n\n", False)
 
     listFunctionNames = list(decls['functions'].items())
-    dispatchStr = IF(f"strcmp(functionNameBuffer, \"{listFunctionNames[0][0]}\") == 0", f"__{listFunctionNames[0][0]}();", ELSE("throw C150Exception(\"received above function name\\n\");", 2), 2)
+    dispatchStr = IF(f"functionName == \"{listFunctionNames[0][0]}\"", f"__{listFunctionNames[0][0]}();", ELSE("throw C150Exception(\"received above function name\\n\");", 2), 2)
     tempDispatchStr = ""
 
     for  name, sig in listFunctionNames[1:]:
-        tempDispatchStr = IF(f"strcmp(functionNameBuffer, \"{name}\") == 0", f"__{name}();", dispatchStr, 2)
+        tempDispatchStr = IF(f"functionName == \"{name}\"", f"__{name}();", dispatchStr, 2)
         dispatchStr = tempDispatchStr
 
     stub.write(indent_it(1))
     stub.write(IF("!RPCSTUBSOCKET-> eof()", dispatchStr, None, 1))
-    print_line(stub, "\n}\n", False)
+    print_line(stub, "\n}\n\n", False)
+
+    print_read_function(proxy, "PROXY")
+    print_read_function(stub, "STUB")
 
     # Close the proxy and stub files for the IDL
     proxy.close()

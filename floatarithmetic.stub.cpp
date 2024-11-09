@@ -1,4 +1,4 @@
-#include "simplefunction.idl"
+#include "floatarithmetic.idl"
 
 #include "rpcstubhelper.h"
 
@@ -10,24 +10,35 @@ using namespace C150NETWORK;
 
 string getStringFromStream();
 
-void __func1() {
+void __add() {
     char doneBuffer[5] = "DONE";
 
-    func1();
+float x = stof(getStringFromStream());
+float y = stof(getStringFromStream());
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
-void __func2() {
+void __divide() {
     char doneBuffer[5] = "DONE";
 
-    func2();
+float x = stof(getStringFromStream());
+float y = stof(getStringFromStream());
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
-void __func3() {
+void __multiply() {
     char doneBuffer[5] = "DONE";
 
-    func3();
+float x = stof(getStringFromStream());
+float y = stof(getStringFromStream());
+    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
+}
+
+void __subtract() {
+    char doneBuffer[5] = "DONE";
+
+float x = stof(getStringFromStream());
+float y = stof(getStringFromStream());
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -35,12 +46,14 @@ void dispatchFunction() {
     string functionName = getStringFromStream();
 
     if (!RPCSTUBSOCKET-> eof()) {
-        if (functionName == "func3") {
-            __func3();
-        } else if (functionName == "func2") {
-            __func2();
-        } else if (functionName == "func1") {
-            __func1();
+        if (functionName == "subtract") {
+            __subtract();
+        } else if (functionName == "multiply") {
+            __multiply();
+        } else if (functionName == "divide") {
+            __divide();
+        } else if (functionName == "add") {
+            __add();
         } else {
             throw C150Exception("received above function name\n");
         }

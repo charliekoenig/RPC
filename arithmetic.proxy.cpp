@@ -7,67 +7,95 @@
 
 using namespace C150NETWORK;
 
+string getStringFromStream();
+
 int add(int x, int y) {
-    int fNameLen = strlen("add");
-    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));
-    RPCPROXYSOCKET->write("add", strlen("add"));
+    RPCPROXYSOCKET->write("add", strlen("add") + 1);
 
-string numStringRep = to_string(x);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string xStringRep = to_string(x);
+    RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
 
-string numStringRep = to_string(y);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string yStringRep = to_string(y);
+    RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
 
+    int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
     if (strncmp(readBuffer, "DONE", 4) != 0) {
         throw C150Exception("error");
     }
+    return retVal;
 }
 
 int divide(int x, int y) {
-    int fNameLen = strlen("divide");
-    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));
-    RPCPROXYSOCKET->write("divide", strlen("divide"));
+    RPCPROXYSOCKET->write("divide", strlen("divide") + 1);
 
-string numStringRep = to_string(x);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string xStringRep = to_string(x);
+    RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
 
-string numStringRep = to_string(y);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string yStringRep = to_string(y);
+    RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
 
+    int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
     if (strncmp(readBuffer, "DONE", 4) != 0) {
         throw C150Exception("error");
     }
+    return retVal;
 }
 
 int multiply(int x, int y) {
-    int fNameLen = strlen("multiply");
-    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));
-    RPCPROXYSOCKET->write("multiply", strlen("multiply"));
+    RPCPROXYSOCKET->write("multiply", strlen("multiply") + 1);
 
-string numStringRep = to_string(x);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string xStringRep = to_string(x);
+    RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
 
-string numStringRep = to_string(y);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string yStringRep = to_string(y);
+    RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
 
+    int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
     if (strncmp(readBuffer, "DONE", 4) != 0) {
         throw C150Exception("error");
     }
+    return retVal;
 }
 
 int subtract(int x, int y) {
-    int fNameLen = strlen("subtract");
-    RPCPROXYSOCKET->write((const char *) &fNameLen, sizeof(fNameLen));
-    RPCPROXYSOCKET->write("subtract", strlen("subtract"));
+    RPCPROXYSOCKET->write("subtract", strlen("subtract") + 1);
 
-string numStringRep = to_string(x);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string xStringRep = to_string(x);
+    RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
 
-string numStringRep = to_string(y);RPCPROXYSOCKET->write(numStringRep.c_str(), numStringRep.length() + 1);
+    string yStringRep = to_string(y);
+    RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
 
+    int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
     if (strncmp(readBuffer, "DONE", 4) != 0) {
         throw C150Exception("error");
     }
+    return retVal;
 }
 
+string getStringFromStream() {
+    char bufp = '\0';
+
+    vector<char> stringRead;
+
+    int readlen = 1;
+
+    while (readlen == 1) { 
+        readlen = RPCPROXYSOCKET-> read(&bufp, 1);
+        stringRead.push_back(bufp);
+        if (bufp == '\0') {
+            break;
+        }
+ 
+    }
+    return stringRead.data();
+
+}
