@@ -12,8 +12,6 @@ string getStringFromStream();
 int sqrt(__int[24] x, __int[24] y) {
     RPCPROXYSOCKET->write("sqrt", strlen("sqrt") + 1);
 
-
-
     int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);

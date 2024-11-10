@@ -49,9 +49,12 @@ void dispatchFunction() {
 
 string getStringFromStream() {
     char bufp = '\0';
+
     vector<char> stringRead;
+
     int readlen = 1;
-    while (readlen == 1) {
+
+    while (readlen == 1) { 
         readlen = RPCSTUBSOCKET-> read(&bufp, 1);
         stringRead.push_back(bufp);
         if (bufp == '\0') {
@@ -59,4 +62,5 @@ string getStringFromStream() {
         }
     }
     return stringRead.data();
+
 }

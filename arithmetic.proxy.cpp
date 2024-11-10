@@ -14,10 +14,8 @@ int add(int x, int y) {
 
     string xStringRep = to_string(x);
     RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
-
     string yStringRep = to_string(y);
     RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
-
     int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
@@ -32,10 +30,8 @@ int divide(int x, int y) {
 
     string xStringRep = to_string(x);
     RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
-
     string yStringRep = to_string(y);
     RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
-
     int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
@@ -50,10 +46,8 @@ int multiply(int x, int y) {
 
     string xStringRep = to_string(x);
     RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
-
     string yStringRep = to_string(y);
     RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
-
     int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
@@ -68,10 +62,8 @@ int subtract(int x, int y) {
 
     string xStringRep = to_string(x);
     RPCPROXYSOCKET->write(xStringRep.c_str(), xStringRep.length() + 1);
-
     string yStringRep = to_string(y);
     RPCPROXYSOCKET->write(yStringRep.c_str(), yStringRep.length() + 1);
-
     int retVal = stoi(getStringFromStream());
     char readBuffer[4];
     RPCPROXYSOCKET->read(readBuffer, 4);
@@ -94,7 +86,6 @@ string getStringFromStream() {
         if (bufp == '\0') {
             break;
         }
- 
     }
     return stringRead.data();
 

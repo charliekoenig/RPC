@@ -1,4 +1,4 @@
-#include "testarray1.idl"
+#include "testarray2.idl"
 
 #include "rpcstubhelper.h"
 
@@ -18,15 +18,23 @@ void __sqrt() {
         x[i0] = stoi(getStringFromStream());
     }
 
-    int y[24];
+    int y[24][15];
     for (int i0 = 0; i0 < 24; i++) { 
-        y[i0] = stoi(getStringFromStream());
+        for (int i1 = 0; i1 < 15; i++) { 
+            y[i0][i1] = stoi(getStringFromStream());
+        }
     }
 
-    int retVal = sqrt(x, y);
+    int z[24][15];
+    for (int i0 = 0; i0 < 24; i++) { 
+        for (int i1 = 0; i1 < 15; i++) { 
+            z[i0][i1] = stoi(getStringFromStream());
+        }
+    }
+
+    int retVal = sqrt(x, y, z);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 

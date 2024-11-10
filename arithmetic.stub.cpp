@@ -18,7 +18,6 @@ void __add() {
     int retVal = add(x, y);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -30,7 +29,6 @@ void __divide() {
     int retVal = divide(x, y);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -42,7 +40,6 @@ void __multiply() {
     int retVal = multiply(x, y);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -54,7 +51,6 @@ void __subtract() {
     int retVal = subtract(x, y);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -89,7 +85,6 @@ string getStringFromStream() {
         if (bufp == '\0') {
             break;
         }
- 
     }
     return stringRead.data();
 

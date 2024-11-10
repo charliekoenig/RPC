@@ -32,8 +32,7 @@ def ELSE (body, indentation) -> str:
 
 def BODY (body, indentation) -> str:
     i = indent_it(indentation)
-    indented = list(map(lambda line : i + line, body))
-    return "\n".join(indented) + "\n"
+    return ''.join(list(map(lambda line : i + line + "\n", body)))
 
 def LOOP(type, condition, body, indentation) -> str:
     i = indent_it(indentation - 1)
@@ -41,11 +40,40 @@ def LOOP(type, condition, body, indentation) -> str:
 
     return loop
 
+def deserialize_array(arg_name, arg_type, types, body, indentation):
 
-        
+    if types[arg_type]["type_of_type"] == "array":
+        i = indentation + 1
+        arg_name = arg_name + f"[i{i - 2}]"
+        count = types[arg_type]["element_count"]
+        next_arg_type = types[arg_type]["member_type"]
 
-def deserialize(arg_name, arg_type, types, proxy, stub, body):
-    writetype = f"{arg_type} " if "." not in arg_name else ""
+        b = deserialize_array(arg_name, next_arg_type, types, [], i)
+        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i++", b, i))
+
+        return body
+    else:
+        return deserialize(arg_name, arg_type, types, body, True)
+
+def serialize_array(arg_name, arg_type, types, body, indentation, src):
+
+    if types[arg_type]["type_of_type"] == "array":
+        i = indentation + 1
+        arg_name = arg_name + f"[i{i - 2}]"
+        count = types[arg_type]["element_count"]
+        next_arg_type = types[arg_type]["member_type"]
+
+        b = serialize_array(arg_name, next_arg_type, types, [], i, src)
+        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i++", b, i))
+
+        return body
+    else:
+        return serialize(arg_name, arg_type, types, body, src)
+
+
+def deserialize(arg_name, arg_type, types, body, array):
+
+    writetype = "" if "." in arg_name or array else f"{arg_type} "
     if arg_type == "string":
         body.append(f"{writetype}{arg_name} = getStringFromStream();")
 
@@ -53,49 +81,44 @@ def deserialize(arg_name, arg_type, types, proxy, stub, body):
         body.append(f"{writetype}{arg_name} = sto{arg_type[0]}(getStringFromStream());")
 
     elif types[arg_type]["type_of_type"] == "array":
-        # declare an array of type type
         count = types[arg_type]["element_count"]
-        array_type = types[arg_type]["member_type"]
-        
-        # WORK ON ARRAY TYPE AND ELEM COUNT TRIMMING STUFF HERE
-        body.append(f"{array_type.split("__")[1].split("[")[0]} {arg_name}[{count}];")
-   
-        # STORE ITERATORS AND VARIABLE NAMES FOR NESTED ARRAYS
-        b = deserialize("v1", array_type, types, proxy, stub, [])
-        b.append(f"{arg_name}[i] = v1;")
 
-        body.append(LOOP("for", f"int i = 0; i < {count}; i++", b, 2))
-        # start forloop based on element count
-            # recurse on member type
-        # end forloop
+        body.append(f"{arg_type.split('__')[1].split('[')[0]} {arg_name}{arg_type[arg_type.index('['):]};")
+
+        b = deserialize_array(arg_name, arg_type, types, [], 1)
+        body.append(BODY(b, 0))
+        return body
+
 
     elif types[arg_type]["type_of_type"] == "struct":
         if "." not in arg_name:
             body.append(f"{writetype}{arg_name};\n")
 
         for member in types[arg_type]["members"]:
-            deserialize(f"{arg_name}.{member['name']}", member['type'], types, proxy, stub, body)
+            deserialize(f"{arg_name}.{member['name']}", member['type'], types, body, False)
 
     return body
             
 
-def serialize(arg_name, arg_type, types, proxy, stub, body, src):
-    valid_var = arg_name.replace('.', "")
+def serialize(arg_name, arg_type, types, body, src):
+    valid_var = arg_name.replace('.', "").replace('[', "").replace(']', "")
     if arg_type == "string":
         body.append(f"RPC{src}SOCKET->write({arg_name}.c_str(), {arg_name}.length() + 1);\n")
         
     elif types[arg_type]["type_of_type"] == "builtin": 
         body.append(f"string {valid_var}StringRep = to_string({arg_name});")
-        body.append(f"RPC{src}SOCKET->write({valid_var}StringRep.c_str(), {valid_var}StringRep.length() + 1);\n")
+        body.append(f"RPC{src}SOCKET->write({valid_var}StringRep.c_str(), {valid_var}StringRep.length() + 1);")
         
     elif types[arg_type]["type_of_type"] == "array":
-        print(arg_name + ": handling array")
+        b = serialize_array(arg_name, arg_type, types, [], 1, src)
+        body.append(BODY(b, 0))
+        return body
         # start forloop based on element count
             # recurse on member type
         # end forloop
     elif types[arg_type]["type_of_type"] == "struct":
         for member in types[arg_type]["members"]:
-            serialize(f"{arg_name}.{member['name']}", member['type'], types, proxy, stub, body, src)
+            serialize(f"{arg_name}.{member['name']}", member['type'], types, body, src)
 
     return body
 
@@ -103,7 +126,10 @@ def serialize(arg_name, arg_type, types, proxy, stub, body, src):
 def proxy_function_setup (name, sig, types) -> str:
     return_type = sig["return_type"]
     args        = sig["arguments"]
-    argstring = ', '.join([a["type"] + ' ' + a["name"] for a in args])
+
+    argstring = ', '.join(a["type"] + ' ' + a["name"] if types[a["type"]]['type_of_type'] != "array"
+                else f"{a['type'].split('__')[1].split('[')[0]} {a['name']}{a['type'][a['type'].index('['):]}" 
+                for a in args)
 
     i = indent_it(1)
 
@@ -195,12 +221,6 @@ def print_read_function(fd, sname):
                         [f"readlen = RPC{sname}SOCKET-> read(&bufp, 1);", 
                           "stringRead.push_back(bufp);",
                           IF("bufp == '\\0'", "break;", None, 2)], 2),
-                #    "while (readlen == 1) {\n",
-                #    f"readlen = RPC{sname}SOCKET-> read(&bufp, 1);\n",
-                #    "stringRead.push_back(bufp);\n",
-                #    IF("bufp == '\\0'", "break;", None, 2),
-                #    "\n",
-                #    "}\n",
                    "return stringRead.data();\n"], 1))
     fd.write("}\n")
 
@@ -284,8 +304,8 @@ try:
         stub.write(stub_function_setup(name, sig, types))
 
         for arg in sig["arguments"]:
-            serialized = serialize(arg["name"], arg["type"], types, proxy, stub, [], "PROXY")
-            deserialized = deserialize(arg["name"], arg["type"], types, proxy, stub, [])
+            serialized = serialize(arg["name"], arg["type"], types, [], "PROXY")
+            deserialized = deserialize(arg["name"], arg["type"], types, [], False)
 
             proxy.write(BODY(serialized, 1))
             stub.write(BODY(deserialized, 1))
@@ -301,8 +321,8 @@ try:
         else: 
             stub.write(f"{return_type} retVal = {name}({argstring});\n")
 
-            serialized = serialize("retVal", return_type, types, proxy, stub, [], "STUB")
-            deserialized = deserialize("retVal", return_type, types, proxy, stub, [])
+            serialized = serialize("retVal", return_type, types, [], "STUB")
+            deserialized = deserialize("retVal", return_type, types, [], False)
 
             proxy.write(BODY(deserialized, 1))
             stub.write(BODY(serialized, 1))
@@ -321,19 +341,24 @@ try:
     print_line(stub, "string functionName = getStringFromStream();\n\n", False)
 
     listFunctionNames = list(decls['functions'].items())
-    dispatchStr = IF(f"functionName == \"{listFunctionNames[0][0]}\"", f"__{listFunctionNames[0][0]}();", ELSE("throw C150Exception(\"received above function name\\n\");", 2), 2)
-    tempDispatchStr = ""
+    if len(listFunctionNames) > 0:
+        dispatchStr = IF(f"functionName == \"{listFunctionNames[0][0]}\"", f"__{listFunctionNames[0][0]}();", ELSE("throw C150Exception(\"received above function name\\n\");", 2), 2)
+        tempDispatchStr = ""
 
-    for  name, sig in listFunctionNames[1:]:
-        tempDispatchStr = IF(f"functionName == \"{name}\"", f"__{name}();", dispatchStr, 2)
-        dispatchStr = tempDispatchStr
+    if len(listFunctionNames) > 1:
+        for name, sig in listFunctionNames[1:]:
+            tempDispatchStr = IF(f"functionName == \"{name}\"", f"__{name}();", dispatchStr, 2)
+            dispatchStr = tempDispatchStr
 
-    stub.write(indent_it(1))
-    stub.write(IF("!RPCSTUBSOCKET-> eof()", dispatchStr, None, 1))
+    if len(listFunctionNames) > 0:
+        stub.write(indent_it(1))
+        stub.write(IF("!RPCSTUBSOCKET-> eof()", dispatchStr, None, 1))
+    
     print_line(stub, "\n}\n\n", False)
 
-    print_read_function(proxy, "PROXY")
-    print_read_function(stub, "STUB")
+    if len(listFunctionNames) > 0:
+        print_read_function(proxy, "PROXY")
+        print_read_function(stub, "STUB")
 
     # Close the proxy and stub files for the IDL
     proxy.close()
