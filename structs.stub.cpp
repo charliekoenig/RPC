@@ -10,42 +10,21 @@ using namespace C150NETWORK;
 
 string getStringFromStream();
 
-void __area() {
+void __oldestAge() {
     char doneBuffer[5] = "DONE";
 
-    rectangle r;
+    StructWithArrays x[10];
+    for (int i0 = 0; i0 < 10; i0++) { 
+        x[i0].aNumber = stoi(getStringFromStream());
+        for (int i1 = 0; i1 < 10; i1++) { 
+            x[i0].people[i1].age = stoi(getStringFromStream());
+        }
 
-    r.x = stoi(getStringFromStream());
-    r.y = stoi(getStringFromStream());
-    int retVal = area(r);
+    }
+
+    int retVal = oldestAge(x);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
-    RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
-}
-
-void __findPerson() {
-    char doneBuffer[5] = "DONE";
-
-    ThreePeople tp;
-
-    tp.p1.firstname = getStringFromStream();
-    tp.p1.lastname = getStringFromStream();
-    tp.p1.age = stoi(getStringFromStream());
-    tp.p2.firstname = getStringFromStream();
-    tp.p2.lastname = getStringFromStream();
-    tp.p2.age = stoi(getStringFromStream());
-    tp.p3.firstname = getStringFromStream();
-    tp.p3.lastname = getStringFromStream();
-    tp.p3.age = stoi(getStringFromStream());
-    Person retVal = findPerson(tp);
-    RPCSTUBSOCKET->write(retVal.firstname.c_str(), retVal.firstname.length() + 1);
-
-    RPCSTUBSOCKET->write(retVal.lastname.c_str(), retVal.lastname.length() + 1);
-
-    string retValageStringRep = to_string(retVal.age);
-    RPCSTUBSOCKET->write(retValageStringRep.c_str(), retValageStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -53,10 +32,8 @@ void dispatchFunction() {
     string functionName = getStringFromStream();
 
     if (!RPCSTUBSOCKET-> eof()) {
-        if (functionName == "findPerson") {
-            __findPerson();
-        } else if (functionName == "area") {
-            __area();
+        if (functionName == "oldestAge") {
+            __oldestAge();
         } else {
             throw C150Exception("received above function name\n");
         }

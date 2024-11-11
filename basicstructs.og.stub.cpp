@@ -1,4 +1,4 @@
-#include "testarray1.idl"
+#include "basicstructs.idl"
 
 #include "rpcstubhelper.h"
 
@@ -10,23 +10,30 @@ using namespace C150NETWORK;
 
 string getStringFromStream();
 
-void __sqrt() {
+void __oldestAge() {
     char doneBuffer[5] = "DONE";
 
-    int x[24];
-    for (int i0 = 0; i0 < 24; i++) { 
-        x[i0] = stoi(getStringFromStream());
+    StructWithArrays x[10];
+    for (int i0 = 0; i0 < 10; i0++) { 
+        for (int i1 = 0; i1 < 10; i1++) { 
+            x[i0].people[i1].age = stoi(getStringFromStream());
+            cout << "From stub received: [" << i0 << "][" << i1 <<"] = " << x[i0].people[i1].age << endl;
+
+        }
+
     }
 
-    int y[24];
-    for (int i0 = 0; i0 < 24; i++) { 
-        y[i0] = stoi(getStringFromStream());
+    for (int i0 = 0; i0 < 10; i0++) { 
+        for (int i1 = 0; i1 < 10; i1++) { 
+            cout << "x[" << i0 << "][" << i1 <<"] = " << x[i0].people[i1].age << endl;
+
+        }
+
     }
 
-    int retVal = sqrt(x, y);
+    int retVal = oldestAge(x);
     string retValStringRep = to_string(retVal);
     RPCSTUBSOCKET->write(retValStringRep.c_str(), retValStringRep.length() + 1);
-
     RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));    
 }
 
@@ -34,8 +41,8 @@ void dispatchFunction() {
     string functionName = getStringFromStream();
 
     if (!RPCSTUBSOCKET-> eof()) {
-        if (functionName == "sqrt") {
-            __sqrt();
+        if (functionName == "oldestAge") {
+            __oldestAge();
         } else {
             throw C150Exception("received above function name\n");
         }

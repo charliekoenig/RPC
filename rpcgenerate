@@ -49,14 +49,13 @@ def deserialize_array(arg_name, arg_type, types, body, indentation):
         next_arg_type = types[arg_type]["member_type"]
 
         b = deserialize_array(arg_name, next_arg_type, types, [], i)
-        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i++", b, i))
+        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i{i - 2}++", b, i))
 
         return body
     else:
-        return deserialize(arg_name, arg_type, types, body, True)
+        return deserialize(arg_name, arg_type, types, body, True, indentation)
 
 def serialize_array(arg_name, arg_type, types, body, indentation, src):
-
     if types[arg_type]["type_of_type"] == "array":
         i = indentation + 1
         arg_name = arg_name + f"[i{i - 2}]"
@@ -64,14 +63,14 @@ def serialize_array(arg_name, arg_type, types, body, indentation, src):
         next_arg_type = types[arg_type]["member_type"]
 
         b = serialize_array(arg_name, next_arg_type, types, [], i, src)
-        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i++", b, i))
+        body.append(LOOP("for", f"int i{i - 2} = 0; i{i - 2} < {count}; i{i - 2}++", b, i))
 
         return body
     else:
-        return serialize(arg_name, arg_type, types, body, src)
+        return serialize(arg_name, arg_type, types, body, src, indentation)
 
 
-def deserialize(arg_name, arg_type, types, body, array):
+def deserialize(arg_name, arg_type, types, body, array, indentation):
 
     writetype = "" if "." in arg_name or array else f"{arg_type} "
     if arg_type == "string":
@@ -83,24 +82,23 @@ def deserialize(arg_name, arg_type, types, body, array):
     elif types[arg_type]["type_of_type"] == "array":
         count = types[arg_type]["element_count"]
 
-        body.append(f"{arg_type.split('__')[1].split('[')[0]} {arg_name}{arg_type[arg_type.index('['):]};")
+        if not array:
+            body.append(f"{arg_type.split('__')[1].split('[')[0]} {arg_name}{arg_type[arg_type.index('['):]};")
 
-        b = deserialize_array(arg_name, arg_type, types, [], 1)
+        b = deserialize_array(arg_name, arg_type, types, [], indentation)
         body.append(BODY(b, 0))
-        return body
-
 
     elif types[arg_type]["type_of_type"] == "struct":
-        if "." not in arg_name:
+        if "." not in arg_name and not array:
             body.append(f"{writetype}{arg_name};\n")
 
         for member in types[arg_type]["members"]:
-            deserialize(f"{arg_name}.{member['name']}", member['type'], types, body, False)
+            deserialize(f"{arg_name}.{member['name']}", member['type'], types, body, True, indentation)
 
     return body
             
 
-def serialize(arg_name, arg_type, types, body, src):
+def serialize(arg_name, arg_type, types, body, src, indentation):
     valid_var = arg_name.replace('.', "").replace('[', "").replace(']', "")
     if arg_type == "string":
         body.append(f"RPC{src}SOCKET->write({arg_name}.c_str(), {arg_name}.length() + 1);\n")
@@ -110,15 +108,12 @@ def serialize(arg_name, arg_type, types, body, src):
         body.append(f"RPC{src}SOCKET->write({valid_var}StringRep.c_str(), {valid_var}StringRep.length() + 1);")
         
     elif types[arg_type]["type_of_type"] == "array":
-        b = serialize_array(arg_name, arg_type, types, [], 1, src)
+        b = serialize_array(arg_name, arg_type, types, [], indentation, src)
         body.append(BODY(b, 0))
-        return body
-        # start forloop based on element count
-            # recurse on member type
-        # end forloop
+
     elif types[arg_type]["type_of_type"] == "struct":
         for member in types[arg_type]["members"]:
-            serialize(f"{arg_name}.{member['name']}", member['type'], types, body, src)
+            serialize(f"{arg_name}.{member['name']}", member['type'], types, body, src, indentation)
 
     return body
 
@@ -136,26 +131,6 @@ def proxy_function_setup (name, sig, types) -> str:
     return_str = f"{return_type} {name}({argstring}) {{\n"
     return_str += i + f"RPCPROXYSOCKET->write(\"{name}\", strlen(\"{name}\") + 1);\n\n"
 
-    # for j in range(0, len(args)):
-    #     if types[args[j]['type']]["type_of_type"] == "builtin":
-    #         return_str += i + f"RPCPROXYSOCKET->write((const char *) &{args[j]['name']}, sizeof({args[j]['name']}));\n\n"
-    #     # for data to be serialized, go into else
-
-    # if (return_type != "void"):
-    #     return_str += i + f"{return_type} retVal;\n"
-    #     return_str += i + "RPCPROXYSOCKET->read((char *) &retVal, sizeof(retVal));\n\n"
-
-    # return_str += i + "char readBuffer[4];\n" + i + "RPCPROXYSOCKET->read(readBuffer, 4);\n"
-    
-    # return_str += i + IF("strncmp(readBuffer, \"DONE\", 4) != 0", \
-    #                    "throw C150Exception(\"error\");", \
-    #                    None, 1)
-
-    # if (return_type != "void"):
-    #     return_str += i + "return retVal;"
-    
-    # return_str += "\n}\n\n"
-                
     return return_str
 
 def proxy_function_wrapup () -> str:
@@ -179,26 +154,6 @@ def stub_function_setup (name, sig, types) -> str:
 
     return_str = f"void __{name}() {{\n"
     return_str += i + "char doneBuffer[5] = \"DONE\";\n\n"
-
-    # for j in range(0, len(args)):
-    #     if types[args[j]['type']]["type_of_type"] == "builtin":
-    #         return_str += i + f"{args[j]['type']} {args[j]['name']};\n"
-    #         return_str += i + f"RPCSTUBSOCKET->read((char *) &{args[j]['name']}, sizeof({args[j]['name']}));\n\n"
-    #     # for data to be serialized, go into else
-
-    # if (return_type != "void"):
-    #     return_str += i + f"{return_type} retVal = {name}("
-    # else:
-    #     return_str += i + f"{name}("
-    # return_str += argstring + ");\n\n"
-    
-    # if (return_type != "void"):
-    #     if types[return_type]["type_of_type"] == "builtin":
-    #         return_str += i + "RPCSTUBSOCKET->write((const char *) &retVal, sizeof(retVal));\n"
-
-    # return_str += i + "RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer));"
-    
-    # return_str += i + "\n}\n\n"
 
     return return_str
 
@@ -304,8 +259,8 @@ try:
         stub.write(stub_function_setup(name, sig, types))
 
         for arg in sig["arguments"]:
-            serialized = serialize(arg["name"], arg["type"], types, [], "PROXY")
-            deserialized = deserialize(arg["name"], arg["type"], types, [], False)
+            serialized = serialize(arg["name"], arg["type"], types, [], "PROXY", 1)
+            deserialized = deserialize(arg["name"], arg["type"], types, [], False, 1)
 
             proxy.write(BODY(serialized, 1))
             stub.write(BODY(deserialized, 1))
@@ -321,8 +276,8 @@ try:
         else: 
             stub.write(f"{return_type} retVal = {name}({argstring});\n")
 
-            serialized = serialize("retVal", return_type, types, [], "STUB")
-            deserialized = deserialize("retVal", return_type, types, [], False)
+            serialized = serialize("retVal", return_type, types, [], "STUB", 1)
+            deserialized = deserialize("retVal", return_type, types, [], False, 1)
 
             proxy.write(BODY(deserialized, 1))
             stub.write(BODY(serialized, 1))
