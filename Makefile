@@ -44,20 +44,31 @@ CPPFLAGS = -g -Wall -Werror -I$(C150IDSRPC) -I$(C150LIB)
 LDFLAGS = 
 INCLUDES = $(C150LIB)c150streamsocket.h $(C150LIB)c150network.h $(C150LIB)c150exceptions.h $(C150LIB)c150debug.h $(C150LIB)c150utility.h $(C150LIB)c150grading.h $(C150IDSRPC)IDLToken.h $(C150IDSRPC)tokenizeddeclarations.h  $(C150IDSRPC)tokenizeddeclaration.h $(C150IDSRPC)declarations.h $(C150IDSRPC)declaration.h $(C150IDSRPC)functiondeclaration.h $(C150IDSRPC)typedeclaration.h $(C150IDSRPC)arg_or_member_declaration.h rpcproxyhelper.h rpcstubhelper.h simplefunction.idl arithmetic.idl floatarithmetic.idl 
 
-all: pingstreamclient pingstreamserver idldeclarationtst simplefunctionclient simplefunctionserver idl_to_json
+ALL_IDL_FILES = $(wildcard *.idl)
 
-sf: simplefunctionclient simplefunctionserver
+# ALL_PROXY_FILES = $(patsubst %.idl,%.proxy.cpp,$(ALL_IDL_FILES))
+# ALL_PROXY_OBJECTS = $(patsubst %.idl,%.proxy.o,$(ALL_IDL_FILES))
+ALL_CLIENT_OBJECTS = $(patsubst %.idl,%client,$(ALL_IDL_FILES))
 
-a: arithmeticclient arithmeticserver
+# ALL_STUB_FILES = $(patsubst %.idl,%.stub.cpp,$(ALL_IDL_FILES))
+# ALL_STUB_OBJECTS = $(patsubst %.idl,%.stub.o,$(ALL_IDL_FILES))
+ALL_SERVER_OBJECTS = $(patsubst %.idl,%server,$(ALL_IDL_FILES))
+
+# all: pingstreamclient pingstreamserver idldeclarationtst simplefunctionclient simplefunctionserver idl_to_json
+all: $(ALL_CLIENT_OBJECTS) $(ALL_SERVER_OBJECTS)
+
+# sf: simplefunctionclient simplefunctionserver
+
+# a: arithmeticclient arithmeticserver
 
 ########################################################################
 # IDIL & CHARLIE'S
 
-arithmeticclient: arithmeticclient.o rpcproxyhelper.o arithmetic.proxy.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
-	$(CPP) -o arithmeticclient arithmeticclient.o rpcproxyhelper.o arithmetic.proxy.o  $(C150AR) $(C150IDSRPCAR) 
+# arithmeticclient: arithmeticclient.o rpcproxyhelper.o arithmetic.proxy.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
+#	$(CPP) -o arithmeticclient arithmeticclient.o rpcproxyhelper.o arithmetic.proxy.o  $(C150AR) $(C150IDSRPCAR) 
 
-arithmeticserver: arithmetic.stub.o rpcserver.o rpcstubhelper.o arithmetic.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
-	$(CPP) -o arithmeticserver rpcserver.o arithmetic.stub.o arithmetic.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
+# arithmeticserver: arithmetic.stub.o rpcserver.o rpcstubhelper.o arithmetic.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
+#	$(CPP) -o arithmeticserver rpcserver.o arithmetic.stub.o arithmetic.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
 
 ########################################################################
 #
@@ -67,12 +78,12 @@ arithmeticserver: arithmetic.stub.o rpcserver.o rpcstubhelper.o arithmetic.o  $(
 #
 ########################################################################
 
-pingstreamclient: pingstreamclient.o  $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
-	$(CPP) -o pingstreamclient pingstreamclient.o $(C150AR) $(C150IDSRPCAR) 
+#pingstreamclient: pingstreamclient.o  $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
+#	$(CPP) -o pingstreamclient pingstreamclient.o $(C150AR) $(C150IDSRPCAR) 
 
 
-pingstreamserver: pingstreamserver.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
-	$(CPP) -o pingstreamserver pingstreamserver.o $(C150AR) $(C150IDSRPCAR) 
+#pingstreamserver: pingstreamserver.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
+#	$(CPP) -o pingstreamserver pingstreamserver.o $(C150AR) $(C150IDSRPCAR) 
 
 
 ########################################################################
@@ -90,15 +101,15 @@ pingstreamserver: pingstreamserver.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
 #
 ########################################################################
 
-simplefunctionclient: simplefunctionclient.o rpcproxyhelper.o simplefunction.proxy.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
-	$(CPP) -o simplefunctionclient simplefunctionclient.o rpcproxyhelper.o simplefunction.proxy.o  $(C150AR) $(C150IDSRPCAR) 
+#simplefunctionclient: simplefunctionclient.o rpcproxyhelper.o simplefunction.proxy.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
+#	$(CPP) -o simplefunctionclient simplefunctionclient.o rpcproxyhelper.o simplefunction.proxy.o  $(C150AR) $(C150IDSRPCAR) 
 
 # The following is NOT a mistake. The main program for any of the rpc servers
 # is rpcserver.o.  This way, we can make a different one for each set 
 # of functions, by linking the right specific stugs (in this case
 # simplefunction.stub.o)
-simplefunctionserver: simplefunction.stub.o rpcserver.o rpcstubhelper.o simplefunction.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
-	$(CPP) -o simplefunctionserver rpcserver.o simplefunction.stub.o simplefunction.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
+#simplefunctionserver: simplefunction.stub.o rpcserver.o rpcstubhelper.o simplefunction.o  $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
+#	$(CPP) -o simplefunctionserver rpcserver.o simplefunction.stub.o simplefunction.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
 
 
 ########################################################################
@@ -111,8 +122,8 @@ simplefunctionserver: simplefunction.stub.o rpcserver.o rpcstubhelper.o simplefu
 ########################################################################
 
 # Compile the rpcgenerate program
-rpcgenerate: Makefile rpcgenerate.o $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
-	$(CPP) -o rpcgenerate rpcgenerate.o $(C150AR) $(C150IDSRPCAR)
+#rpcgenerate: Makefile rpcgenerate.o $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
+#	$(CPP) -o rpcgenerate rpcgenerate.o $(C150AR) $(C150IDSRPCAR)
 
 ########################################################################
 #
@@ -135,14 +146,12 @@ rpcgenerate: Makefile rpcgenerate.o $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
 ########################################################################
 
 # Compile / link any client executable: 
-#%client: %.o %.proxy.o rpcserver.o rpcproxyhelper.o %client.o %.proxy.o
-#	$(CPP) -o $@ $@.o rpcproxyhelper.o $*.proxy.o  $(C150AR) $(C150IDSRPCAR) 
+$(ALL_CLIENT_OBJECTS): %client: %.o %.proxy.o rpcserver.o rpcproxyhelper.o %client.o %.proxy.o
+	$(CPP) -o $@ $@.o rpcproxyhelper.o $*.proxy.o  $(C150AR) $(C150IDSRPCAR) 
 
 # Compile / link any server executable:
-#%server: %.o %.stub.o rpcserver.o rpcstubhelper.o %.stub.o
-#	$(CPP) -o $@ rpcserver.o $*.stub.o $*.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
-
-
+$(ALL_SERVER_OBJECTS): %server: %.o %.stub.o rpcserver.o rpcstubhelper.o %.stub.o
+	$(CPP) -o $@ rpcserver.o $*.stub.o $*.o rpcstubhelper.o $(C150AR) $(C150IDSRPCAR) 
 
 ########################################################################
 #
@@ -163,8 +172,8 @@ rpcgenerate: Makefile rpcgenerate.o $(C150AR) $(C150IDSRPCAR) $(INCLUDES)
 #
 ########################################################################
 
-# %.proxy.cpp %.stub.cpp:%.idl $(RPCGEN)
-#	$(RPCGEN) $<
+%.proxy.cpp %.stub.cpp:%.idl $(RPCGEN)
+	$(RPCGEN) $<
 
 ########################################################################
 #
@@ -230,10 +239,7 @@ idl_to_json: idl_to_json.o $(C150AR) $(C150IDSRPCAR)  $(INCLUDES)
 	$(CPP) -c  $(CPPFLAGS) $< 
 
 
-
 # clean up everything we build dynamically (probably missing .cpps from .idl)
+# took idl_to_json off this list
 clean:
-	 rm -f pingstreamclient pingstreamserver idldeclarationtst idl_to_json simplefunctionclient simplefunctionserver *.o *.json *.pyc GRADE* *debug.txt arithmeticclient arithmeticserver
-
-psclean:
-	 rm -f arithmetic.stub.cpp arithmetic.proxy.cpp simplefunction.stub.cpp simplefunction.proxy.cpp
+	 rm -f *client *server idldeclarationtst *.o *.json *.pyc GRADE* *debug.txt *.proxy.cpp *.stub.cpp
