@@ -1,9 +1,9 @@
-#include "simplefunction.idl"
+#include "testarray2.idl"
 
 #include "rpcproxyhelper.h"
-
 #include "c150debug.h"
 #include "c150grading.h"
+
 #include <fstream>
 
 using namespace std;          // for C++ std library
@@ -12,52 +12,22 @@ using namespace C150NETWORK;  // for all the comp150 utilities
 // forward declarations
 void setUpDebugLogging(const char *logname, int argc, char *argv[]);
 
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-//
-//                    Command line arguments
-//
-// The following are used as subscripts to argv, the command line arguments
-// If we want to change the command line syntax, doing this
-// symbolically makes it a bit easier.
-//
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
 const int serverArg = 1;     // server name is 1st arg
 
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-//
-//                           main program
-//
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
- 
 int 
 main(int argc, char *argv[]) {
 
-     //
-     //  Set up debug message logging
-     //
-     setUpDebugLogging("simplefunctionclientdebug.txt",argc, argv);
+        setUpDebugLogging("simplefunctionclientdebug.txt",argc, argv);
 
-     //
-     // Make sure command line looks right
-     //
+        GRADEME(argc, argv);
+        
      if (argc != 2) {
        fprintf(stderr,"Correct syntxt is: %s <servername> \n", argv[0]);
        exit(1);
      }
 
-     //
-     //  DO THIS FIRST OR YOUR ASSIGNMENT WON'T BE GRADED!
-     //
-     
-     GRADEME(argc, argv);
-
-     //
-     //     Call the functions and see if they return
-     //
      try {
+       int result; 
 
        //
        // Set up the socket so the proxies can find it
@@ -65,36 +35,22 @@ main(int argc, char *argv[]) {
        rpcproxyinitialize(argv[serverArg]);
 
        // 
-       // Call (possibly remote) func1
+       // Call (possibly remote) add
        //
+       int x[24];
+       int y[24][15];
+       int z[24][15];
+       for (int i = 0; i < 24; i++) {
+                x[i] = i;
+                for (int j = 0; j < 15; j++) {
+                  y[i][j] = i+j;
+                  z[i][j] = i*j;
+                }
+       }
+       printf("Calling sqrt(x[24],y[24])\n");
+       result = sqrt(x, y, z);                          // remote call (we hope!)
+       printf("Returned from sqrt(x[24],y[24]). Result should be 23: %d\n",result);
 
-       *GRADING << "Going to start making RPCs" << endl;
-      
-       printf("Calling func1()\n");
-       *GRADING << "Calling func1()" << endl;
-       func1();                          // remote call (we hope!)
-       *GRADING << "Returned from func1()" << endl;
-       printf("Returned from func1()\n");
-
-       // 
-       // Call (possibly remote) func2
-       //
-       printf("Calling func2()\n");
-       *GRADING << "Calling func2()" << endl;
-       func2();                          // remote call (we hope!)
-       *GRADING << "Returned from func2()" << endl;
-       printf("Returned from func2()\n");
-
-       // 
-       // Call (possibly remote) func3
-       //
-       printf("Calling func3()\n");
-       *GRADING << "Calling func3()" << endl;
-       func3();                          // remote call (we hope!)
-       *GRADING << "Returned from func3()" << endl;
-       printf("Returned from func3()\n");
-
-       *GRADING << "Done making RPCs" << endl;
      }
 
      //
@@ -107,9 +63,6 @@ main(int argc, char *argv[]) {
        // In case we're logging to a file, write to the console too
        cerr << argv[0] << ": caught C150NetworkException: " << e.formattedExplanation() << endl;
      }
-
-     // Note that Linux will cleanly close the socket upon exit
-     // as long as there is no unread data on the connection.
 
      return 0;
 }

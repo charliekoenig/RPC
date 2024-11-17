@@ -141,6 +141,7 @@ void __badFunction(char *functionName) {
 
   c150debug->printf(C150RPCDEBUG,"simplefunction.stub.cpp: received call for nonexistent function %s()",functionName);
   RPCSTUBSOCKET->write(doneBuffer, strlen(doneBuffer)+1);
+  RPCSTUBSOCKET->write("BAD", strlen("BAD")+1);
 }
 
 

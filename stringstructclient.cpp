@@ -1,12 +1,60 @@
-#include "simplefunction.idl"
+// --------------------------------------------------------------
+//
+//                        arithmeticclient.cpp
+//
+//        Author: Noah Mendelsohn         
+//   
+//
+//        This is a test program designed to call a few demonstration
+//        functions, after first enabling the COMP 150-IDS rpcproxyhelper.
+//        (The purpose of the helper is to open a TCP stream connection
+//        to the proper server, and to leave the socket pointer where
+//        the generated proxies can find it.
+//
+//        NOTE: Although this example does nothing except test the
+//        functions, we may test your proxies and stubs with client
+//        applications that do real work. 
+//
+//        NOTE: When actually testing your RPC submission, you will use
+//        a different client application for each set of functions. This
+//        one is just to show a simple example.
+//
+//        NOTE: The only thing that makes this different from 
+//        an ordinary local application is the call to
+//        rpcproxyinitialize. If you commented that out, you could
+//        link this with the local version of simplefunction.o
+//        (which has the remotable function implementations)			      
+//
+//        COMMAND LINE
+//
+//              arithmeticclient <servername> 
+//
+//        OPERATION
+//
+//
+//       Copyright: 2012 Noah Mendelsohn
+//     
+// --------------------------------------------------------------
+
+
+// IMPORTANT! WE INCLUDE THE IDL FILE AS IT DEFINES THE INTERFACES
+// TO THE FUNCTIONS WE'RE REMOTING. OF COURSE, THE PARTICULAR IDL FILE
+// IS CHOSEN ACCORDING TO THE TEST OR APPLICATION
+// 
+// NOTE THAT THIS IS THE SAME IDL FILE INCLUDED WITH THE PROXIES
+// AND STUBS, AND ALSO USED AS INPUT TO AUTOMATIC PROXY/STUB
+// GENERATOR PROGRAM
+
 
 #include "rpcproxyhelper.h"
 
 #include "c150debug.h"
 #include "c150grading.h"
 #include <fstream>
+#include <string>
 
 using namespace std;          // for C++ std library
+#include "stringstruct.idl"
 using namespace C150NETWORK;  // for all the comp150 utilities 
 
 // forward declarations
@@ -58,43 +106,24 @@ main(int argc, char *argv[]) {
      //     Call the functions and see if they return
      //
      try {
+       string result; 
 
        //
        // Set up the socket so the proxies can find it
        //
        rpcproxyinitialize(argv[serverArg]);
 
+       Person p;
+       p.firstname = "charlie";
+       p.lastname = "koenig";
+       p.age = 22;
        // 
-       // Call (possibly remote) func1
+       // Call (possibly remote) add
        //
+       printf("Calling findLastName(p)\n");
+       result = findLastName(p);                          // remote call (we hope!)
+       printf("Returned from findLastName(p). Result=%s\n",result.c_str());
 
-       *GRADING << "Going to start making RPCs" << endl;
-      
-       printf("Calling func1()\n");
-       *GRADING << "Calling func1()" << endl;
-       func1();                          // remote call (we hope!)
-       *GRADING << "Returned from func1()" << endl;
-       printf("Returned from func1()\n");
-
-       // 
-       // Call (possibly remote) func2
-       //
-       printf("Calling func2()\n");
-       *GRADING << "Calling func2()" << endl;
-       func2();                          // remote call (we hope!)
-       *GRADING << "Returned from func2()" << endl;
-       printf("Returned from func2()\n");
-
-       // 
-       // Call (possibly remote) func3
-       //
-       printf("Calling func3()\n");
-       *GRADING << "Calling func3()" << endl;
-       func3();                          // remote call (we hope!)
-       *GRADING << "Returned from func3()" << endl;
-       printf("Returned from func3()\n");
-
-       *GRADING << "Done making RPCs" << endl;
      }
 
      //
@@ -107,9 +136,6 @@ main(int argc, char *argv[]) {
        // In case we're logging to a file, write to the console too
        cerr << argv[0] << ": caught C150NetworkException: " << e.formattedExplanation() << endl;
      }
-
-     // Note that Linux will cleanly close the socket upon exit
-     // as long as there is no unread data on the connection.
 
      return 0;
 }
@@ -140,56 +166,13 @@ main(int argc, char *argv[]) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  
 void setUpDebugLogging(const char *logname, int argc, char *argv[]) {
-
-     //   
-     //           Choose where debug output should go
-     //
-     // The default is that debug output goes to cerr.
-     //
-     // Uncomment the following three lines to direct
-     // debug output to a file. Comment them
-     // to default to the console.
-     //
-     // Note: the new DebugStream and ofstream MUST live after we return
-     // from setUpDebugLogging, so we have to allocate
-     // them dynamically.
-     //
-     //
-     // Explanation: 
-     // 
-     //     The first line is ordinary C++ to open a file
-     //     as an output stream.
-     //
-     //     The second line wraps that will all the services
-     //     of a comp 150-IDS debug stream, and names that filestreamp.
-     //
-     //     The third line replaces the global variable c150debug
-     //     and sets it to point to the new debugstream. Since c150debug
-     //     is what all the c150 debug routines use to find the debug stream,
-     //     you've now effectively overridden the default.
-     //
      ofstream *outstreamp = new ofstream(logname);
      DebugStream *filestreamp = new DebugStream(outstreamp);
      DebugStream::setDefaultLogger(filestreamp);
 
-     //
-     //  Put the program name and a timestamp on each line of the debug log.
-     //
      c150debug->setPrefix(argv[0]);
      c150debug->enableTimestamp(); 
 
-     //
-     // Ask to receive all classes of debug message
-     //
-     // See c150debug.h for other classes you can enable. To get more than
-     // one class, you can or (|) the flags together and pass the combined
-     // mask to c150debug -> enableLogging 
-     //
-     // By the way, the default is to disable all output except for
-     // messages written with the C150ALWAYSLOG flag. Those are typically
-     // used only for things like fatal errors. So, the default is
-     // for the system to run quietly without producing debug output.
-     //
      c150debug->enableLogging(C150ALLDEBUG | C150RPCDEBUG | C150APPLICATION | C150NETWORKTRAFFIC | 
 			      C150NETWORKDELIVERY); 
 }

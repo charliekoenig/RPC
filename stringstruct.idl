@@ -1,0 +1,3 @@
+struct Person {string firstname; string lastname; int age;};
+
+string findLastName(Person p);
