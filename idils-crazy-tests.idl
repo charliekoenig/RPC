@@ -1,17 +1,65 @@
+struct Person { string name; int age; };
+struct Relative { string name; int age; Person r; };
+struct FamilyOfThree { string lastname; Person family_members[3]; };
+
 void printNone();
 void printOne(int one);
 void printTwo(float two);
 void printThis(string thisword);
-
-struct Person { string name; int age; };
 void printPerson(Person idil);
-
-struct Relative { string name; int age; Person r; };
 void printRelative(Relative idils_sister);
-
-struct FamilyOfThree { string lastname; Person family_members[3]; };
 void printFamily(FamilyOfThree fot);
-
 void printPersons(Person persons[5]);
 void printFamilies(FamilyOfThree fot[5]);
 void printPersonsOfPersons(Person people[5][4]);
+
+int returnTwo();
+int returnInputInt(int input);
+int returnInputFloat(float input);
+int returnInputString(string input);
+int returnAgeOfPerson(Person idil);
+int returnAgeOfRelativeOfPerson(Relative idils_sister);
+int returnAverageAgeOfFamily(FamilyOfThree fot);
+int returnAverageAgeOfPersons(Person persons[5]);
+int returnAverageAgeOfFamilies(FamilyOfThree fot[5]);
+int returnAverageAgeOfPeople(Person people[5][4]);
+
+float fReturnTwo();
+float fReturnInputInt(int input);
+float fReturnInputFloat(float input);
+float fReturnInputString(string input);
+float fReturnAgeOfPerson(Person idil);
+float fReturnAgeOfRelativeOfPerson(Relative idils_sister);
+float fReturnAverageAgeOfFamily(FamilyOfThree fot);
+float fReturnAverageAgeOfPersons(Person persons[5]);
+float fReturnAverageAgeOfFamilies(FamilyOfThree fot[5]);
+float fReturnAverageAgeOfPeople(Person people[5][4]);
+
+string sReturnTwo();
+string sReturnInputInt(int input);
+string sReturnInputFloat(float input);
+string sReturnInputString(string input);
+string sReturnAgeOfPerson(Person idil);
+string sReturnAgeOfRelativeOfPerson(Relative idils_sister);
+string sReturnAverageAgeOfFamily(FamilyOfThree fot);
+string sReturnAverageAgeOfPersons(Person persons[5]);
+string sReturnAverageAgeOfFamilies(FamilyOfThree fot[5]);
+string sReturnAverageAgeOfPeople(Person people[5][4]);
+
+Person makeRandomPerson();
+Person makePersonAgeYearsOld(int age);
+Person makePersonAgeAndAHalfYearsOld(float age);
+Person makePersonWithName(string name);
+Person makeCopyOfPerson(Person p);
+Person returnRelativeAYearOlder(Relative idils_sister);
+Person returnOldestMember(FamilyOfThree fot);
+Person returnYoungestMember(Person persons[5]);
+Person returnOldestAverageFamily(FamilyOfThree fot[5]);
+Person returnYoungestAveragePeople(Person people[5][4]);
+
+FamilyOfThree makeFamilyOfThree();
+FamilyOfThree makeFamilyWithAges(int age1, int age2, int age3);
+FamilyOfThree makeFamilyWithName(string lastname);
+FamilyOfThree makeFamilyWithPersons(Person p1, Person p2, Person p3);
+FamilyOfThree makeFamilyWithPersonArray(Person fofthree[3]);
+FamilyOfThree returnOldestFamily(FamilyOfThree families[5]);
