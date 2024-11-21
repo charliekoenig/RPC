@@ -1,0 +1,17 @@
+void printNone();
+void printOne(int one);
+void printTwo(float two);
+void printThis(string thisword);
+
+struct Person { string name; int age; };
+void printPerson(Person idil);
+
+struct Relative { string name; int age; Person r; };
+void printRelative(Relative idils_sister);
+
+struct FamilyOfThree { string lastname; Person family_members[3]; };
+void printFamily(FamilyOfThree fot);
+
+void printPersons(Person persons[5]);
+void printFamilies(FamilyOfThree fot[5]);
+void printPersonsOfPersons(Person people[5][4]);
