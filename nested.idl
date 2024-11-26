@@ -1,0 +1,15 @@
+struct Inner {
+    int x;
+    float y;
+    string name;
+};
+
+struct Outer {
+    Inner data;
+    Inner array[3];
+    int nums[2][2];
+};
+
+int testStruct(Outer obj);
+float testArray(Inner arr[4]);
+string testMixed(int simple[2], Inner structured[2]);
